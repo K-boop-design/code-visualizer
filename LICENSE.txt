@@ -1,0 +1,4 @@
+Copyright (c) 2026. All rights reserved.
+
+This software and associated source code are proprietary. No permission is granted to copy, modify, distribute, sublicense, sell, or use this software except through a separate written agreement or explicit license from the copyright holder.
+
