@@ -64,17 +64,18 @@ python3 code_visualizer.py --mode pipeline --file script.py
 python3 code_visualizer.py --mode full --notebook notebook.ipynb
 ```
 
-## Distribution
+## Download
 
-For a paid app, the recommended setup is:
+Grab the latest DMG from the [Releases](https://github.com/K-boop-design/code-visualizer/releases) page.
 
-- Keep the source repository private.
-- Publish a separate public GitHub release repository with this README, screenshots, and downloadable app builds.
-- Upload signed and notarized `.dmg` or `.zip` builds under GitHub Releases.
-- Use a payment provider such as Gumroad, Lemon Squeezy, Stripe Payment Links, or Ko-fi for purchases.
-- Put the paid download or license key delivery behind the payment provider.
+## Support
 
-This keeps hosting costs near zero while still giving the app a public landing page and release history.
+If you find this tool useful, consider supporting development:
+
+- [GitHub Sponsors](https://github.com/sponsors/K-boop-design)
+- [Buy Me a Coffee](https://buymeacoffee.com/kboop)
+
+Your support helps keep the project alive and growing!
 
 ## Current Status
 
@@ -93,7 +94,5 @@ Code analysis runs locally. If AI explanation features are enabled, the app uses
 
 ## License
 
-Copyright (c) 2026. All rights reserved.
-
-This repository is not open-source unless a separate open-source license is added.
+MIT License — see [LICENSE.txt](LICENSE.txt) for details.
 
