@@ -368,7 +368,7 @@ struct SkillProgress: Codable, Identifiable {
     var id: String { stage }
 }
 
-struct AIChatMessage: Codable, Identifiable {
+struct AIChatMessage: Encodable, Identifiable {
     let id: String
     let role: String
     let content: String
@@ -377,6 +377,11 @@ struct AIChatMessage: Codable, Identifiable {
         self.id = id
         self.role = role
         self.content = content
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case role
+        case content
     }
 }
 

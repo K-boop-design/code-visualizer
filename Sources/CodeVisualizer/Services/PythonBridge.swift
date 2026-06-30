@@ -288,7 +288,7 @@ final class PythonBridge: @unchecked Sendable {
     }
 }
 
-struct AIRequest: Codable {
+struct AIRequest: Encodable {
     let prompt: String
     let api_key: String
     let provider: String

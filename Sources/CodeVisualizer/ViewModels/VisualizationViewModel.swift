@@ -330,7 +330,13 @@ final class VisualizationViewModel: ObservableObject {
         isAIThinking = true
         aiError = nil
 
-        let messagesToSend = aiConversation.map { AIChatMessage(role: $0.role, content: $0.content) }
+        var messagesToSend: [AIChatMessage]
+        if !aiSystemPrompt.isEmpty {
+            messagesToSend = [AIChatMessage(role: "system", content: aiSystemPrompt)]
+            messagesToSend += aiConversation.map { AIChatMessage(role: $0.role, content: $0.content) }
+        } else {
+            messagesToSend = aiConversation.map { AIChatMessage(role: $0.role, content: $0.content) }
+        }
 
         Task {
             let result = await bridge.queryAIConversation(messages: messagesToSend, apiKey: aiApiKey, provider: aiProvider)
