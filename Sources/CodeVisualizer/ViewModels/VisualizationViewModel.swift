@@ -271,9 +271,6 @@ final class VisualizationViewModel: ObservableObject {
         aiRateLimited = false
         aiConversation = []
 
-        let userMsg = AIChatMessage(role: "user", content: truncatedContext.isEmpty ? prompt : "\(truncatedContext)\n\n\(prompt)")
-        aiConversation.append(userMsg)
-
         Task {
             let result = await bridge.queryAI(prompt: prompt, apiKey: aiApiKey, provider: aiProvider, context: truncatedContext, system: system)
             isAIThinking = false
