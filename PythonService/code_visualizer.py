@@ -174,37 +174,59 @@ class CodeVisualizer:
 
     def _enrich_stage_code(self, pipeline_data: dict, code: str, cell_boundaries: list):
         code_lines = code.split("\n")
+
+        def _make_snippet(cell, stage):
+            if cell:
+                cstart = cell["start_line"] - 1
+                cend = cell["end_line"] - 1
+                cindex = cell.get("cell_index")
+            else:
+                cstart = 0
+                cend = len(code_lines)
+                cindex = None
+            lines_section = []
+            for i in range(cstart, min(cend, len(code_lines))):
+                raw = code_lines[i]
+                lines_section.append({
+                    "line_number": i + 1,
+                    "code": raw,
+                    "description": self._describe_line(raw, stage) if stage else "",
+                })
+            return lines_section, {"start_line": cstart + 1, "end_line": cend, "cell_index": cindex}
+
         for stage in pipeline_data.get("stages", []):
             line_no = stage.get("line")
             if not line_no:
                 continue
             cell = None
             for cb in cell_boundaries:
-                if cb["start_line"] <= line_no <= cb["end_line"]:
+                if cb["start_line"] <= line_no < cb["end_line"]:
                     cell = cb
                     break
-            if not cell:
-                cell_start = max(0, line_no - 3)
-                cell_end = min(len(code_lines), line_no + 4)
-                cell_index = None
-            else:
-                cell_start = cell["start_line"] - 1
-                cell_end = cell["end_line"] - 1
-                cell_index = cell.get("cell_index")
-            lines_section = []
-            for i in range(cell_start, min(cell_end, len(code_lines))):
-                raw = code_lines[i]
-                lines_section.append({
-                    "line_number": i + 1,
-                    "code": raw,
-                    "description": self._describe_line(raw, stage),
-                })
-            stage["code_snippet"] = lines_section
-            stage["code_context"] = {
-                "start_line": cell_start + 1,
-                "end_line": cell_end,
-                "cell_index": cell_index,
-            }
+            snippet, ctx = _make_snippet(cell, stage)
+            stage["code_snippet"] = snippet
+            stage["code_context"] = ctx
+
+        # Add fallback stages for cells with no detected pipeline stages
+        if cell_boundaries:
+            covered_cells = set()
+            for s in pipeline_data.get("stages", []):
+                cc = s.get("code_context", {})
+                if cc.get("cell_index") is not None:
+                    covered_cells.add(cc["cell_index"])
+            for cb in cell_boundaries:
+                cidx = cb.get("cell_index")
+                if cidx not in covered_cells:
+                    snippet, ctx = _make_snippet(cb, None)
+                    pipeline_data["stages"].append({
+                        "stage": "code",
+                        "name": f"Cell {cb['cell_index']}",
+                        "line": cb["start_line"],
+                        "description": "Code cell",
+                        "code_snippet": snippet,
+                        "code_context": ctx,
+                    })
+            pipeline_data["stages"].sort(key=lambda s: s.get("line", 0))
 
     def _describe_line(self, line: str, stage: dict) -> str:
         stripped = line.strip()

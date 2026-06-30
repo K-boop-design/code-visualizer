@@ -94,11 +94,19 @@ class PipelineAnalyzer:
                 if stage:
                     stages.append(stage)
             elif isinstance(node, ast.Assign):
-                for target in node.targets:
-                    if isinstance(target, ast.Name) and isinstance(node.value, ast.Call):
+                if isinstance(node.value, ast.Call):
+                    targets = []
+                    for target in node.targets:
+                        if isinstance(target, ast.Name):
+                            targets.append(target.id)
+                        elif isinstance(target, ast.Tuple):
+                            for elt in target.elts:
+                                if isinstance(elt, ast.Name):
+                                    targets.append(elt.id)
+                    if targets:
                         stage = self._classify_call(node.value)
                         if stage:
-                            stage["target"] = target.id
+                            stage["target"] = ", ".join(targets)
                             stages.append(stage)
             elif isinstance(node, ast.AugAssign) and isinstance(node.value, ast.Call):
                 stage = self._classify_call(node.value)
