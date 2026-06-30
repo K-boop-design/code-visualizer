@@ -277,6 +277,7 @@ final class VisualizationViewModel: ObservableObject {
             aiDebugInfo = "provider=\(aiProvider) status=\(result.status ?? "nil") error=\(result.error ?? "nil")"
             if let response = result.response {
                 aiExplanation = response
+                aiConversation.append(AIChatMessage(role: "user", content: prompt))
                 aiConversation.append(AIChatMessage(role: "assistant", content: response))
             } else if let error = result.error {
                 aiError = error
@@ -327,13 +328,14 @@ final class VisualizationViewModel: ObservableObject {
         isAIThinking = true
         aiError = nil
 
-        var messagesToSend: [AIChatMessage]
-        if !aiSystemPrompt.isEmpty {
-            messagesToSend = [AIChatMessage(role: "system", content: aiSystemPrompt)]
-            messagesToSend += aiConversation.map { AIChatMessage(role: $0.role, content: $0.content) }
-        } else {
-            messagesToSend = aiConversation.map { AIChatMessage(role: $0.role, content: $0.content) }
+        var messagesToSend: [AIChatMessage] = []
+        if !aiContext.isEmpty {
+            messagesToSend.append(AIChatMessage(role: "system", content: "Here is the relevant code context:\n\n\(aiContext)"))
         }
+        if !aiSystemPrompt.isEmpty {
+            messagesToSend.append(AIChatMessage(role: "system", content: aiSystemPrompt))
+        }
+        messagesToSend += aiConversation.map { AIChatMessage(role: $0.role, content: $0.content) }
 
         Task {
             let result = await bridge.queryAIConversation(messages: messagesToSend, apiKey: aiApiKey, provider: aiProvider)
