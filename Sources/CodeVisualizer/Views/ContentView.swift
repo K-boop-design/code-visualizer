@@ -96,7 +96,7 @@ struct ContentView: View {
         .overlay(
             Group {
                 if showOnboarding {
-                    OnboardingView(isPresented: $showOnboarding)
+                    UITutorialOverlay(isPresented: $showOnboarding)
                         .transition(.opacity)
                 }
             }
