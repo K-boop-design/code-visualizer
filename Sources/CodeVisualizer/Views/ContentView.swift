@@ -159,7 +159,8 @@ struct ContentView: View {
                             context: "Full code:\n\(viewModel.code)",
                             system: "You are an expert Python tutor. Explain the specific code line shown — what function call, variable, or operation it performs. Reference the surrounding lines for context. Be concise (2-4 sentences) and practical."
                         )
-                    }
+                    },
+                    fullCode: viewModel.code
                 )
             case .structure:
                 structureView
@@ -267,12 +268,14 @@ struct ContentView: View {
                     .font(.caption.weight(.medium))
                     .foregroundColor(.secondary)
                 Picker("Provider", selection: $settingsProvider) {
-                    Text("GitHub Models (free)").tag("github")
-                    Text("DeepSeek").tag("deepseek")
+                    Text("OpenRouter (20+ free models)").tag("openrouter")
+                    Text("GitHub Models (free GPT-4o)").tag("github")
+                    Text("Groq (free Llama/Mixtral)").tag("groq")
+                    Text("Google Gemini (free)").tag("gemini")
+                    Text("Cerebras (free, 1M tok/day)").tag("cerebras")
+                    Text("Mistral (free, 1B tok/mo)").tag("mistral")
+                    Text("DeepSeek (free tier)").tag("deepseek")
                     Text("OpenAI (ChatGPT)").tag("openai")
-                    Text("Groq (free)").tag("groq")
-                    Text("Google Gemini").tag("gemini")
-                    Text("OpenRouter (free)").tag("openrouter")
                 }
                 .pickerStyle(.radioGroup)
             }
@@ -280,22 +283,26 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 4) {
                 let providerLabel: String = {
                     switch settingsProvider {
-                    case "github": return "GitHub Personal Access Token"
-                    case "deepseek": return "DeepSeek API Key"
-                    case "openai": return "OpenAI API Key"
-                    case "groq": return "Groq API Key"
                     case "openrouter": return "OpenRouter API Key"
-                    default: return "Gemini API Key"
+                    case "github": return "GitHub Personal Access Token"
+                    case "groq": return "Groq API Key"
+                    case "gemini": return "Gemini API Key"
+                    case "cerebras": return "Cerebras API Key"
+                    case "mistral": return "Mistral API Key"
+                    case "deepseek": return "DeepSeek API Key"
+                    default: return "OpenAI API Key"
                     }
                 }()
                 let providerHelp: String = {
                     switch settingsProvider {
-                    case "github": return "Create at github.com/settings/tokens (no scopes needed)"
-                    case "deepseek": return "Get a key at platform.deepseek.com"
-                    case "openai": return "Get a key at platform.openai.com"
-                    case "groq": return "Get a free key at console.groq.com"
-                    case "openrouter": return "Get a free key at openrouter.ai/keys"
-                    default: return "Get a free key at aistudio.google.com"
+                    case "openrouter": return "openrouter.ai/keys — 20+ free models, 50 req/day, no CC"
+                    case "github": return "github.com/settings/tokens — free GPT-4o, no scopes needed"
+                    case "groq": return "console.groq.com — free Llama 3.3 70B, 1000 req/day"
+                    case "gemini": return "aistudio.google.com — free Gemini 2.0 Flash, 1500 req/day"
+                    case "cerebras": return "cloud.cerebras.ai — ~1M tokens/day free, no CC, ultra-fast"
+                    case "mistral": return "console.mistral.ai — ~1B tokens/month on Experiment plan"
+                    case "deepseek": return "platform.deepseek.com — free deepseek-chat model"
+                    default: return "platform.openai.com — paid (not recommended, use free providers)"
                     }
                 }()
                 Text(providerLabel)

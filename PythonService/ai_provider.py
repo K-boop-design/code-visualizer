@@ -288,15 +288,71 @@ def _query_openrouter(prompt: str, api_key: str, system_prompt: str = "", messag
         msgs.append({"role": "user", "content": prompt})
 
     payload = {
-        "model": "google/gemini-2.0-flash-exp:free",
+        "model": "openrouter/free",
         "messages": msgs,
         "temperature": 0.3,
         "max_tokens": 1024,
-        "extra_headers": {"HTTP-Referer": "https://github.com/K-boop-design/code-visualizer", "X-Title": "Code Visualizer"},
     }
 
     req = urllib.request.Request(
         "https://openrouter.ai/api/v1/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+            "HTTP-Referer": "https://github.com/K-boop-design/code-visualizer",
+            "X-Title": "Code Visualizer",
+        },
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=QUERY_TIMEOUT) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+            choices = body.get("choices", [])
+            if not choices:
+                return {"response": None, "error": None, "status": "error"}
+            text = choices[0].get("message", {}).get("content", "")
+            if not text:
+                return {"response": None, "error": None, "status": "error"}
+            return {"response": text, "error": None, "status": "ready"}
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        log(f"OpenRouter HTTP {e.code}: {body[:300]}")
+        if e.code == 401:
+            return {"response": None, "error": None, "status": "invalid_key"}
+        if e.code == 402:
+            return {"response": None, "error": "Insufficient credits. Free models require a verified account at openrouter.ai/keys", "status": "error"}
+        if e.code == 403:
+            return {"response": None, "error": "Access denied. Verify your API key at openrouter.ai/keys — free models may not be available in your region", "status": "error"}
+        if e.code == 429:
+            return {"response": None, "error": None, "status": "rate_limited"}
+        if "tokens" in body.lower() or "token_limit" in body.lower():
+            return {"response": None, "error": "Input too long: token limit reached", "status": "error"}
+        return {"response": None, "error": body[:200], "status": "error"}
+    except urllib.error.URLError as e:
+        log(f"OpenRouter URL error: {e}")
+        return {"response": None, "error": f"Network: {e.reason}", "status": "error"}
+    except Exception as e:
+        log(f"OpenRouter error: {e}")
+        return {"response": None, "error": str(e)[:200], "status": "error"}
+
+
+def _query_cerebras(prompt: str, api_key: str, system_prompt: str = "", messages: list = None) -> dict:
+    msgs = messages if messages else []
+    if not msgs:
+        if system_prompt:
+            msgs.append({"role": "system", "content": system_prompt})
+        msgs.append({"role": "user", "content": prompt})
+
+    payload = {
+        "model": "llama3.1-8b",
+        "messages": msgs,
+        "temperature": 0.3,
+        "max_tokens": 1024,
+    }
+
+    req = urllib.request.Request(
+        "https://api.cerebras.ai/v1/chat/completions",
         data=json.dumps(payload).encode("utf-8"),
         headers={
             "Content-Type": "application/json",
@@ -316,7 +372,7 @@ def _query_openrouter(prompt: str, api_key: str, system_prompt: str = "", messag
             return {"response": text, "error": None, "status": "ready"}
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
-        log(f"OpenRouter HTTP {e.code}: {body[:300]}")
+        log(f"Cerebras HTTP {e.code}: {body[:300]}")
         if e.code in (401, 403):
             return {"response": None, "error": None, "status": "invalid_key"}
         if e.code == 429:
@@ -325,10 +381,61 @@ def _query_openrouter(prompt: str, api_key: str, system_prompt: str = "", messag
             return {"response": None, "error": "Input too long: token limit reached", "status": "error"}
         return {"response": None, "error": body[:200], "status": "error"}
     except urllib.error.URLError as e:
-        log(f"OpenRouter URL error: {e}")
+        log(f"Cerebras URL error: {e}")
         return {"response": None, "error": f"Network: {e.reason}", "status": "error"}
     except Exception as e:
-        log(f"OpenRouter error: {e}")
+        log(f"Cerebras error: {e}")
+        return {"response": None, "error": str(e)[:200], "status": "error"}
+
+
+def _query_mistral(prompt: str, api_key: str, system_prompt: str = "", messages: list = None) -> dict:
+    msgs = messages if messages else []
+    if not msgs:
+        if system_prompt:
+            msgs.append({"role": "system", "content": system_prompt})
+        msgs.append({"role": "user", "content": prompt})
+
+    payload = {
+        "model": "mistral-small-latest",
+        "messages": msgs,
+        "temperature": 0.3,
+        "max_tokens": 1024,
+    }
+
+    req = urllib.request.Request(
+        "https://api.mistral.ai/v1/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        },
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=QUERY_TIMEOUT) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+            choices = body.get("choices", [])
+            if not choices:
+                return {"response": None, "error": None, "status": "error"}
+            text = choices[0].get("message", {}).get("content", "")
+            if not text:
+                return {"response": None, "error": None, "status": "error"}
+            return {"response": text, "error": None, "status": "ready"}
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        log(f"Mistral HTTP {e.code}: {body[:300]}")
+        if e.code in (401, 403):
+            return {"response": None, "error": None, "status": "invalid_key"}
+        if e.code == 429:
+            return {"response": None, "error": None, "status": "rate_limited"}
+        if "tokens" in body.lower() or "token_limit" in body.lower():
+            return {"response": None, "error": "Input too long: token limit reached", "status": "error"}
+        return {"response": None, "error": body[:200], "status": "error"}
+    except urllib.error.URLError as e:
+        log(f"Mistral URL error: {e}")
+        return {"response": None, "error": f"Network: {e.reason}", "status": "error"}
+    except Exception as e:
+        log(f"Mistral error: {e}")
         return {"response": None, "error": str(e)[:200], "status": "error"}
 
 
@@ -356,5 +463,9 @@ def query_ai(prompt: str, api_key: str, provider: str = "openai",
         return _query_github(full_prompt, api_key, system_prompt, messages=msgs)
     elif provider == "openrouter":
         return _query_openrouter(full_prompt, api_key, system_prompt, messages=msgs)
+    elif provider == "cerebras":
+        return _query_cerebras(full_prompt, api_key, system_prompt, messages=msgs)
+    elif provider == "mistral":
+        return _query_mistral(full_prompt, api_key, system_prompt, messages=msgs)
     else:
         return _query_openai(full_prompt, api_key, system_prompt, messages=msgs)

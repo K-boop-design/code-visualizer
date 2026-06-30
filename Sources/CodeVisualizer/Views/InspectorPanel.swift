@@ -442,7 +442,7 @@ struct InspectorPanel: View {
                 Image(systemName: "key.fill")
                     .font(.caption)
                     .foregroundColor(.orange)
-                Text("Set a Gemini API key in Settings to use AI")
+                Text("Set an API key in Settings (gear icon) to use AI")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -455,6 +455,8 @@ struct InspectorPanel: View {
                 case "deepseek": return "DeepSeek"
                 case "groq": return "Groq"
                 case "openrouter": return "OpenRouter"
+                case "cerebras": return "Cerebras"
+                case "mistral": return "Mistral"
                 default: return "Gemini"
                 }
             }()

@@ -7,6 +7,7 @@ struct KagglePipelineView: View {
     @Binding var selectedStage: PipelineStage?
     let onShowOutput: ((Int) -> Void)?
     let onExplainLine: ((String, String) -> Void)?
+    let fullCode: String
     @State private var expandedStageIDs: Set<String> = []
 
     var body: some View {
@@ -54,7 +55,7 @@ struct KagglePipelineView: View {
                     .frame(minWidth: 300)
 
                     if let stage = selectedStage {
-                        StageCodeDetail(stage: stage, onShowOutput: onShowOutput, onExplainLine: onExplainLine)
+                        StageCodeDetail(stage: stage, onShowOutput: onShowOutput, onExplainLine: onExplainLine, fullCode: fullCode)
                             .frame(minWidth: 250, idealWidth: 350)
                     }
                 }
@@ -309,7 +310,23 @@ struct StageCodeDetail: View {
     let stage: PipelineStage
     let onShowOutput: ((Int) -> Void)?
     let onExplainLine: ((String, String) -> Void)?
+    let fullCode: String
     @State private var hoveredLineId: Int?
+
+    private var stageLineNumbers: Set<Int> {
+        Set(stage.codeSnippet?.map { $0.lineNumber } ?? [])
+    }
+
+    private var cellIndex: Int? {
+        stage.codeContext?.cellIndex
+    }
+
+    private var allLines: [(number: Int, code: String)] {
+        fullCode
+            .components(separatedBy: "\n")
+            .enumerated()
+            .map { (number: $0.offset + 1, code: $0.element) }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -335,50 +352,28 @@ struct StageCodeDetail: View {
             .padding()
             .background(Color(nsColor: .controlBackgroundColor))
 
-            if let snippet = stage.codeSnippet, !snippet.isEmpty {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(snippet) { line in
-                                CodeLineRow(
-                                    line: line,
-                                    stage: stage,
-                                    isHovered: hoveredLineId == line.lineNumber,
-                                    onShowOutput: onShowOutput,
-                                    onExplainLine: onExplainLine,
-                                    onHover: { hoveredLineId = $0 ? line.lineNumber : nil }
-                                )
-                                .id(line.id)
-                            }
-                        }
-                    }
-                    .textSelection(.enabled)
-                    .onAppear {
-                        if let target = snippet.first(where: { $0.lineNumber == stage.line }) {
-                            proxy.scrollTo(target.id, anchor: .center)
-                        }
-                    }
-                    .onChange(of: stage.id) {
-                        if let target = snippet.first(where: { $0.lineNumber == stage.line }) {
-                            proxy.scrollTo(target.id, anchor: .center)
-                        }
-                    }
+            ScrollViewReader { proxy in
+                List(allLines, id: \.number) { line in
+                    FullCodeLineRow(
+                        lineNumber: line.number,
+                        code: line.code,
+                        isStageLine: stageLineNumbers.contains(line.number),
+                        isActiveLine: line.number == stage.line,
+                        isHovered: hoveredLineId == line.number,
+                        stageColor: stageColor(stage.stage),
+                        cellIndex: cellIndex,
+                        onShowOutput: onShowOutput,
+                        onExplain: { specificLine, context in onExplainLine?(specificLine, context) },
+                        onHover: { hoveredLineId = $0 ? line.number : nil }
+                    )
                 }
-            } else {
-                VStack(spacing: 12) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(Color.secondary.opacity(0.06))
-                            .frame(width: 48, height: 48)
-                        Image(systemName: "text.alignleft")
-                            .font(.title3)
-                            .foregroundColor(.secondary.opacity(0.5))
-                    }
-                    Text("No code snippet available")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                .listStyle(.plain)
+                .onAppear {
+                    proxy.scrollTo(stage.line, anchor: .center)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onChange(of: stage.id) {
+                    proxy.scrollTo(stage.line, anchor: .center)
+                }
             }
         }
     }
@@ -399,54 +394,48 @@ struct StageCodeDetail: View {
     }
 }
 
-private struct CodeLineRow: View {
-    let line: CodeLine
-    let stage: PipelineStage
+private struct FullCodeLineRow: View {
+    let lineNumber: Int
+    let code: String
+    let isStageLine: Bool
+    let isActiveLine: Bool
     let isHovered: Bool
+    let stageColor: Color
+    let cellIndex: Int?
     let onShowOutput: ((Int) -> Void)?
-    let onExplainLine: ((String, String) -> Void)?
+    let onExplain: (String, String) -> Void
     let onHover: (Bool) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .top, spacing: 10) {
-                Text("\(line.lineNumber)")
+        HStack(alignment: .top, spacing: 10) {
+            Button(action: {
+                let context = "Line \(lineNumber): \(code)"
+                onExplain("\(lineNumber): \(code)", context)
+            }) {
+                Text("\(lineNumber)")
                     .font(.caption2.monospacedDigit())
                     .foregroundColor(.accentColor)
                     .frame(width: 30, alignment: .trailing)
                     .padding(.top, 2)
-                    .onTapGesture {
-                        guard let onExplainLine, let snippet = stage.codeSnippet else { return }
-                        let idx = snippet.firstIndex(where: { $0.id == line.id }) ?? 0
-                        let startIdx = max(0, idx - 2)
-                        let endIdx = min(snippet.count, idx + 3)
-                        let neighborLines = snippet[startIdx..<endIdx]
-                        let context = neighborLines.map { "\($0.lineNumber): \($0.code)" }.joined(separator: "\n")
-                        let specificLine = "\(line.lineNumber): \(line.code)"
-                        onExplainLine(specificLine, context)
-                    }
-                    .help("Explain this line with AI")
-                Text(line.code)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.primary)
-                    .lineLimit(nil)
-                    .textSelection(.enabled)
-                if isFigureLine(line.code),
-                   let cellIdx = stage.codeContext?.cellIndex {
-                    Button(action: { onShowOutput?(cellIdx) }) {
-                        Image(systemName: "eye")
-                            .font(.caption2)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundColor(.accentColor)
-                    .help("Show output figure")
-                    .padding(.leading, 2)
-                }
             }
-            Text(line.description)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .padding(.leading, 40)
+            .buttonStyle(.plain)
+            .help("Explain this line with AI")
+            Text(code)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(.primary)
+                .lineLimit(nil)
+                .textSelection(.enabled)
+            if isFigureLine(code),
+               let cellIdx = cellIndex {
+                Button(action: { onShowOutput?(cellIdx) }) {
+                    Image(systemName: "eye")
+                        .font(.caption2)
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.accentColor)
+                .help("Show output figure")
+                .padding(.leading, 2)
+            }
         }
         .onHover { onHover($0) }
         .contentShape(Rectangle())
@@ -455,15 +444,16 @@ private struct CodeLineRow: View {
         .background(
             RoundedRectangle(cornerRadius: 6)
                 .fill(
-                    line.lineNumber == stage.line ? Color.accentColor.opacity(0.1) :
+                    isActiveLine ? stageColor.opacity(0.15) :
+                    isStageLine ? stageColor.opacity(0.06) :
                     isHovered ? Color.accentColor.opacity(0.05) :
                     Color.clear
                 )
         )
         .overlay(alignment: .leading) {
-            if line.lineNumber == stage.line {
+            if isActiveLine {
                 RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.accentColor)
+                    .fill(stageColor)
                     .frame(width: 3)
             }
         }
