@@ -922,6 +922,7 @@ def _main():
             provider=payload.get("provider", "groq"),
             context=payload.get("context", ""),
             system_prompt=payload.get("system", ""),
+            messages=payload.get("messages"),
         )
         print(json.dumps(result, default=str))
         return

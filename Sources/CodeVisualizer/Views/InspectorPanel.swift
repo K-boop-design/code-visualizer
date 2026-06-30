@@ -380,25 +380,61 @@ struct InspectorPanel: View {
 
     @ViewBuilder
     private var aiResultSection: some View {
-        if let debug = viewModel.aiDebugInfo, viewModel.aiUnavailable {
-            inspectorSection("AI Debug") {
-                Text(debug)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+        if !viewModel.aiConversation.isEmpty {
+            inspectorSection("AI Chat") {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(viewModel.aiConversation) { msg in
+                        HStack(alignment: .top, spacing: 6) {
+                            Text(msg.role == "user" ? "You:" : "AI:")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(msg.role == "user" ? .accentColor : .green)
+                                .frame(width: 28, alignment: .trailing)
+                            Text(msg.content)
+                                .font(.subheadline)
+                                .foregroundColor(.primary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .textSelection(.enabled)
+                        }
+                    }
+                    if viewModel.isAIThinking {
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .scaleEffect(0.6)
+                            Text("Thinking...")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.leading, 34)
+                    }
+                    HStack(spacing: 6) {
+                        TextField("Ask a follow-up question...", text: $viewModel.aiFollowUpText)
+                            .textFieldStyle(.plain)
+                            .font(.subheadline)
+                            .padding(8)
+                            .background(Color(nsColor: .textBackgroundColor))
+                            .cornerRadius(8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                            )
+                            .onSubmit {
+                                viewModel.sendFollowUp()
+                            }
+                        Button(action: { viewModel.sendFollowUp() }) {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.title3)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundColor(.accentColor)
+                        .disabled(viewModel.isAIThinking || viewModel.aiFollowUpText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
             }
-        }
-        if let error = viewModel.aiError {
+        } else if let error = viewModel.aiError {
             inspectorSection("AI Error") {
                 Text(error)
                     .font(.caption)
                     .foregroundColor(.red)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        } else if let explanation = viewModel.aiExplanation {
-            inspectorSection("AI Explanation") {
-                Text(explanation)
-                    .font(.subheadline)
-                    .foregroundColor(.primary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         } else if viewModel.aiNeedsKey {

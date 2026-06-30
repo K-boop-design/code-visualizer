@@ -125,11 +125,27 @@ final class PythonBridge: @unchecked Sendable {
     func queryAI(prompt: String, apiKey: String = "", provider: String = "groq", context: String = "", system: String = "") async -> AIResponse {
         await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
-                let payload = AIRequest(prompt: prompt, api_key: apiKey, provider: provider, context: context, system: system)
+                let payload = AIRequest(prompt: prompt, api_key: apiKey, provider: provider, context: context, system: system, messages: nil)
                 let encoder = JSONEncoder()
                 guard let jsonData = try? encoder.encode(payload),
                       let jsonStr = String(data: jsonData, encoding: .utf8) else {
                     continuation.resume(returning: AIResponse(response: nil, error: "Failed to encode AI request"))
+                    return
+                }
+                let result = self.runAISync(stdin: jsonStr)
+                continuation.resume(returning: result)
+            }
+        }
+    }
+
+    func queryAIConversation(messages: [AIChatMessage], apiKey: String, provider: String) async -> AIResponse {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let payload = AIRequest(prompt: "", api_key: apiKey, provider: provider, context: "", system: "", messages: messages)
+                let encoder = JSONEncoder()
+                guard let jsonData = try? encoder.encode(payload),
+                      let jsonStr = String(data: jsonData, encoding: .utf8) else {
+                    continuation.resume(returning: AIResponse(response: nil, error: "Failed to encode AI conversation"))
                     return
                 }
                 let result = self.runAISync(stdin: jsonStr)
@@ -278,6 +294,7 @@ struct AIRequest: Codable {
     let provider: String
     let context: String
     let system: String
+    let messages: [AIChatMessage]?
 }
 
 struct AIResponse: Codable {

@@ -26,6 +26,10 @@ final class VisualizationViewModel: ObservableObject {
     @Published var aiDebugInfo: String?
     @Published var aiApiKey: String = ""
     @Published var aiProvider: String = "openai"
+    @Published var aiConversation: [AIChatMessage] = []
+    @Published var aiFollowUpText: String = ""
+    @Published var aiSystemPrompt: String = ""
+    @Published var aiContext: String = ""
 
     private let bridge = PythonBridge.shared
     private let layoutEngine = GraphLayoutEngine()
@@ -249,6 +253,9 @@ final class VisualizationViewModel: ObservableObject {
             return
         }
 
+        aiSystemPrompt = system
+        aiContext = context
+
         let maxContextLen = 3000
         let truncatedContext = context.count > maxContextLen
             ? String(context.prefix(maxContextLen)) + "\n... (truncated)"
@@ -262,6 +269,10 @@ final class VisualizationViewModel: ObservableObject {
         aiNeedsKey = false
         aiInvalidKey = false
         aiRateLimited = false
+        aiConversation = []
+
+        let userMsg = AIChatMessage(role: "user", content: truncatedContext.isEmpty ? prompt : "\(truncatedContext)\n\n\(prompt)")
+        aiConversation.append(userMsg)
 
         Task {
             let result = await bridge.queryAI(prompt: prompt, apiKey: aiApiKey, provider: aiProvider, context: truncatedContext, system: system)
@@ -269,13 +280,16 @@ final class VisualizationViewModel: ObservableObject {
             aiDebugInfo = "provider=\(aiProvider) status=\(result.status ?? "nil") error=\(result.error ?? "nil")"
             if let response = result.response {
                 aiExplanation = response
+                aiConversation.append(AIChatMessage(role: "assistant", content: response))
             } else if let error = result.error {
                 aiError = error
+                aiConversation = []
                 Task {
                     try? await Task.sleep(nanoseconds: 6_000_000_000)
                     withAnimation { aiError = nil }
                 }
             } else {
+                aiConversation = []
                 switch result.status {
                 case "no_key":
                     aiNeedsKey = true
@@ -306,6 +320,50 @@ final class VisualizationViewModel: ObservableObject {
         }
     }
 
+    func sendFollowUp() {
+        let text = aiFollowUpText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        aiFollowUpText = ""
+
+        let userMsg = AIChatMessage(role: "user", content: text)
+        aiConversation.append(userMsg)
+        isAIThinking = true
+        aiError = nil
+
+        let messagesToSend = aiConversation.map { AIChatMessage(role: $0.role, content: $0.content) }
+
+        Task {
+            let result = await bridge.queryAIConversation(messages: messagesToSend, apiKey: aiApiKey, provider: aiProvider)
+            isAIThinking = false
+            if let response = result.response {
+                aiExplanation = response
+                aiConversation.append(AIChatMessage(role: "assistant", content: response))
+            } else if let error = result.error {
+                aiError = error
+                Task {
+                    try? await Task.sleep(nanoseconds: 6_000_000_000)
+                    withAnimation { aiError = nil }
+                }
+            } else {
+                switch result.status {
+                case "no_key": aiNeedsKey = true
+                case "invalid_key": aiInvalidKey = true
+                case "rate_limited": aiRateLimited = true
+                default: aiUnavailable = true
+                }
+                Task {
+                    try? await Task.sleep(nanoseconds: 4_000_000_000)
+                    withAnimation { [weak self] in
+                        self?.aiNeedsKey = false
+                        self?.aiInvalidKey = false
+                        self?.aiRateLimited = false
+                        self?.aiUnavailable = false
+                    }
+                }
+            }
+        }
+    }
+
     func clear() {
         code = ""
         scriptResult = nil
@@ -326,6 +384,10 @@ final class VisualizationViewModel: ObservableObject {
         aiInvalidKey = false
         aiRateLimited = false
         aiDebugInfo = nil
+        aiConversation = []
+        aiFollowUpText = ""
+        aiSystemPrompt = ""
+        aiContext = ""
     }
 }
 

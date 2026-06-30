@@ -23,15 +23,18 @@ def log(msg: str):
     print(msg, file=sys.stderr, flush=True)
 
 
-def _query_groq(prompt: str, api_key: str, system_prompt: str = "") -> dict:
-    messages = []
-    if system_prompt:
-        messages.append({"role": "system", "content": system_prompt})
-    messages.append({"role": "user", "content": prompt})
+def _query_groq(prompt: str, api_key: str, system_prompt: str = "", messages: list = None) -> dict:
+    if messages:
+        msgs = messages
+    else:
+        msgs = []
+        if system_prompt:
+            msgs.append({"role": "system", "content": system_prompt})
+        msgs.append({"role": "user", "content": prompt})
 
     payload = {
         "model": GROQ_MODEL,
-        "messages": messages,
+        "messages": msgs,
         "temperature": 0.3,
         "max_tokens": 1024,
     }
@@ -73,12 +76,20 @@ def _query_groq(prompt: str, api_key: str, system_prompt: str = "") -> dict:
         return {"response": None, "error": str(e)[:200], "status": "error"}
 
 
-def _query_gemini(prompt: str, api_key: str, system_prompt: str = "") -> dict:
+def _query_gemini(prompt: str, api_key: str, system_prompt: str = "", messages: list = None) -> dict:
     for api_ver in GEMINI_API_VERSIONS:
         for model in GEMINI_MODELS:
             try:
                 url = f"https://generativelanguage.googleapis.com/{api_ver}/models/{model}:generateContent?key={api_key}"
-                contents = [{"role": "user", "parts": [{"text": prompt}]}]
+                if messages:
+                    contents = []
+                    for m in messages:
+                        if m["role"] in ("user", "assistant"):
+                            contents.append({"role": m["role"], "parts": [{"text": m["content"]}]})
+                    if not contents:
+                        contents = [{"role": "user", "parts": [{"text": prompt}]}]
+                else:
+                    contents = [{"role": "user", "parts": [{"text": prompt}]}]
                 payload = {
                     "contents": contents,
                     "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024},
@@ -116,15 +127,16 @@ def _query_gemini(prompt: str, api_key: str, system_prompt: str = "") -> dict:
     return {"response": None, "error": None, "status": "error"}
 
 
-def _query_github(prompt: str, api_key: str, system_prompt: str = "") -> dict:
-    messages = []
-    if system_prompt:
-        messages.append({"role": "system", "content": system_prompt})
-    messages.append({"role": "user", "content": prompt})
+def _query_github(prompt: str, api_key: str, system_prompt: str = "", messages: list = None) -> dict:
+    msgs = messages if messages else []
+    if not msgs:
+        if system_prompt:
+            msgs.append({"role": "system", "content": system_prompt})
+        msgs.append({"role": "user", "content": prompt})
 
     payload = {
         "model": "gpt-4o-mini",
-        "messages": messages,
+        "messages": msgs,
         "temperature": 0.3,
         "max_tokens": 1024,
     }
@@ -166,15 +178,16 @@ def _query_github(prompt: str, api_key: str, system_prompt: str = "") -> dict:
         return {"response": None, "error": str(e)[:200], "status": "error"}
 
 
-def _query_deepseek(prompt: str, api_key: str, system_prompt: str = "") -> dict:
-    messages = []
-    if system_prompt:
-        messages.append({"role": "system", "content": system_prompt})
-    messages.append({"role": "user", "content": prompt})
+def _query_deepseek(prompt: str, api_key: str, system_prompt: str = "", messages: list = None) -> dict:
+    msgs = messages if messages else []
+    if not msgs:
+        if system_prompt:
+            msgs.append({"role": "system", "content": system_prompt})
+        msgs.append({"role": "user", "content": prompt})
 
     payload = {
         "model": "deepseek-chat",
-        "messages": messages,
+        "messages": msgs,
         "temperature": 0.3,
         "max_tokens": 1024,
     }
@@ -216,15 +229,16 @@ def _query_deepseek(prompt: str, api_key: str, system_prompt: str = "") -> dict:
         return {"response": None, "error": str(e)[:200], "status": "error"}
 
 
-def _query_openai(prompt: str, api_key: str, system_prompt: str = "") -> dict:
-    messages = []
-    if system_prompt:
-        messages.append({"role": "system", "content": system_prompt})
-    messages.append({"role": "user", "content": prompt})
+def _query_openai(prompt: str, api_key: str, system_prompt: str = "", messages: list = None) -> dict:
+    msgs = messages if messages else []
+    if not msgs:
+        if system_prompt:
+            msgs.append({"role": "system", "content": system_prompt})
+        msgs.append({"role": "user", "content": prompt})
 
     payload = {
         "model": "gpt-3.5-turbo",
-        "messages": messages,
+        "messages": msgs,
         "temperature": 0.3,
         "max_tokens": 1024,
     }
@@ -267,21 +281,26 @@ def _query_openai(prompt: str, api_key: str, system_prompt: str = "") -> dict:
 
 
 def query_ai(prompt: str, api_key: str, provider: str = "openai",
-             context: str = "", system_prompt: str = "") -> dict:
+             context: str = "", system_prompt: str = "", messages: list = None) -> dict:
     if not api_key:
         return {"response": None, "error": None, "status": "no_key"}
 
-    full_prompt = prompt
-    if context:
-        full_prompt = f"{context}\n\n{prompt}"
+    if messages:
+        full_prompt = prompt
+        msgs = messages
+    else:
+        full_prompt = prompt
+        if context:
+            full_prompt = f"{context}\n\n{prompt}"
+        msgs = None
 
     if provider == "gemini":
-        return _query_gemini(full_prompt, api_key, system_prompt)
+        return _query_gemini(full_prompt, api_key, system_prompt, messages=msgs)
     elif provider == "groq":
-        return _query_groq(full_prompt, api_key, system_prompt)
+        return _query_groq(full_prompt, api_key, system_prompt, messages=msgs)
     elif provider == "deepseek":
-        return _query_deepseek(full_prompt, api_key, system_prompt)
+        return _query_deepseek(full_prompt, api_key, system_prompt, messages=msgs)
     elif provider == "github":
-        return _query_github(full_prompt, api_key, system_prompt)
+        return _query_github(full_prompt, api_key, system_prompt, messages=msgs)
     else:
-        return _query_openai(full_prompt, api_key, system_prompt)
+        return _query_openai(full_prompt, api_key, system_prompt, messages=msgs)

@@ -368,6 +368,18 @@ struct SkillProgress: Codable, Identifiable {
     var id: String { stage }
 }
 
+struct AIChatMessage: Codable, Identifiable {
+    let id: String
+    let role: String
+    let content: String
+
+    init(id: String = UUID().uuidString, role: String, content: String) {
+        self.id = id
+        self.role = role
+        self.content = content
+    }
+}
+
 struct CellBoundary: Codable {
     let cellIndex: Int
     let startLine: Int
