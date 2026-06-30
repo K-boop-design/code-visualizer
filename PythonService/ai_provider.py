@@ -6,7 +6,7 @@ import sys
 QUERY_TIMEOUT = 60
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "llama3-70b-8192"
+GROQ_MODEL = "openai/gpt-oss-120b"
 
 GEMINI_API_VERSIONS = ["v1", "v1beta"]
 GEMINI_MODELS = [
@@ -45,6 +45,7 @@ def _query_groq(prompt: str, api_key: str, system_prompt: str = "", messages: li
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}",
+            "User-Agent": "CodeVisualizer/1.0",
         },
     )
 
@@ -61,8 +62,10 @@ def _query_groq(prompt: str, api_key: str, system_prompt: str = "", messages: li
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
         log(f"Groq HTTP {e.code}: {body[:300]}")
-        if e.code in (401, 403):
+        if e.code == 401:
             return {"response": None, "error": None, "status": "invalid_key"}
+        if e.code == 403:
+            return {"response": None, "error": f"Access denied ({body[:150]})", "status": "error"}
         if e.code == 429:
             return {"response": None, "error": None, "status": "rate_limited"}
         if "tokens" in body.lower() or "token_limit" in body.lower():
@@ -100,7 +103,7 @@ def _query_gemini(prompt: str, api_key: str, system_prompt: str = "", messages: 
                 req = urllib.request.Request(
                     url,
                     data=json.dumps(payload).encode("utf-8"),
-                    headers={"Content-Type": "application/json"},
+                    headers={"Content-Type": "application/json", "User-Agent": "CodeVisualizer/1.0"},
                 )
                 with urllib.request.urlopen(req, timeout=QUERY_TIMEOUT) as resp:
                     body = json.loads(resp.read().decode("utf-8"))
@@ -147,6 +150,7 @@ def _query_github(prompt: str, api_key: str, system_prompt: str = "", messages: 
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}",
+            "User-Agent": "CodeVisualizer/1.0",
         },
     )
 
@@ -163,8 +167,10 @@ def _query_github(prompt: str, api_key: str, system_prompt: str = "", messages: 
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
         log(f"GitHub HTTP {e.code}: {body[:300]}")
-        if e.code in (401, 403):
+        if e.code == 401:
             return {"response": None, "error": None, "status": "invalid_key"}
+        if e.code == 403:
+            return {"response": None, "error": f"Access denied ({body[:150]})", "status": "error"}
         if e.code == 429:
             return {"response": None, "error": None, "status": "rate_limited"}
         if "tokens" in body.lower() or "token_limit" in body.lower():
@@ -198,6 +204,7 @@ def _query_deepseek(prompt: str, api_key: str, system_prompt: str = "", messages
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}",
+            "User-Agent": "CodeVisualizer/1.0",
         },
     )
 
@@ -214,8 +221,10 @@ def _query_deepseek(prompt: str, api_key: str, system_prompt: str = "", messages
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
         log(f"DeepSeek HTTP {e.code}: {body[:300]}")
-        if e.code in (401, 403):
+        if e.code == 401:
             return {"response": None, "error": None, "status": "invalid_key"}
+        if e.code == 403:
+            return {"response": None, "error": f"Access denied ({body[:150]})", "status": "error"}
         if e.code == 429:
             return {"response": None, "error": None, "status": "rate_limited"}
         if "tokens" in body.lower() or "token_limit" in body.lower():
@@ -249,6 +258,7 @@ def _query_openai(prompt: str, api_key: str, system_prompt: str = "", messages: 
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}",
+            "User-Agent": "CodeVisualizer/1.0",
         },
     )
 
@@ -265,8 +275,10 @@ def _query_openai(prompt: str, api_key: str, system_prompt: str = "", messages: 
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
         log(f"OpenAI HTTP {e.code}: {body[:300]}")
-        if e.code in (401, 403):
+        if e.code == 401:
             return {"response": None, "error": None, "status": "invalid_key"}
+        if e.code == 403:
+            return {"response": None, "error": f"Access denied ({body[:150]})", "status": "error"}
         if e.code == 429:
             return {"response": None, "error": None, "status": "rate_limited"}
         if e.code == 400:
@@ -302,6 +314,7 @@ def _query_openrouter(prompt: str, api_key: str, system_prompt: str = "", messag
             "Authorization": f"Bearer {api_key}",
             "HTTP-Referer": "https://github.com/K-boop-design/code-visualizer",
             "X-Title": "Code Visualizer",
+            "User-Agent": "CodeVisualizer/1.0",
         },
     )
 
@@ -411,6 +424,7 @@ def _query_mistral(prompt: str, api_key: str, system_prompt: str = "", messages:
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}",
+            "User-Agent": "CodeVisualizer/1.0",
         },
     )
 
@@ -427,8 +441,10 @@ def _query_mistral(prompt: str, api_key: str, system_prompt: str = "", messages:
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
         log(f"Mistral HTTP {e.code}: {body[:300]}")
-        if e.code in (401, 403):
+        if e.code == 401:
             return {"response": None, "error": None, "status": "invalid_key"}
+        if e.code == 403:
+            return {"response": None, "error": f"Access denied ({body[:150]})", "status": "error"}
         if e.code == 429:
             return {"response": None, "error": None, "status": "rate_limited"}
         if "tokens" in body.lower() or "token_limit" in body.lower():

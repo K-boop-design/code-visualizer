@@ -28,6 +28,7 @@ final class VisualizationViewModel: ObservableObject {
     @Published var aiProvider: String = "openai"
     @Published var aiConversation: [AIChatMessage] = []
     @Published var aiFollowUpText: String = ""
+    @Published var aiCancelled = false
     @Published var aiSystemPrompt: String = ""
     @Published var aiContext: String = ""
 
@@ -254,13 +255,12 @@ final class VisualizationViewModel: ObservableObject {
         }
 
         aiSystemPrompt = system
-        aiContext = context
-
-        let maxContextLen = 3000
-        let truncatedContext = context.count > maxContextLen
-            ? String(context.prefix(maxContextLen)) + "\n... (truncated)"
+        let maxContextLen = 30000
+        aiContext = context.count > maxContextLen
+            ? "[beginning truncated...]\n" + String(context.suffix(maxContextLen))
             : context
 
+        aiCancelled = false
         isAIThinking = true
         aiError = nil
         aiExplanation = nil
@@ -269,10 +269,14 @@ final class VisualizationViewModel: ObservableObject {
         aiNeedsKey = false
         aiInvalidKey = false
         aiRateLimited = false
-        aiConversation = []
+        aiConversation = [AIChatMessage(role: "user", content: prompt)]
 
         Task {
-            let result = await bridge.queryAI(prompt: prompt, apiKey: aiApiKey, provider: aiProvider, context: truncatedContext, system: system)
+            let result = await bridge.queryAI(prompt: prompt, apiKey: aiApiKey, provider: aiProvider, context: aiContext, system: system)
+            guard !aiCancelled else {
+                isAIThinking = false
+                return
+            }
             isAIThinking = false
             aiDebugInfo = "provider=\(aiProvider) status=\(result.status ?? "nil") error=\(result.error ?? "nil")"
             if let response = result.response {
@@ -318,6 +322,7 @@ final class VisualizationViewModel: ObservableObject {
     }
 
     func sendFollowUp() {
+        guard !isAIThinking else { return }
         let text = aiFollowUpText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         aiFollowUpText = ""
@@ -338,6 +343,13 @@ final class VisualizationViewModel: ObservableObject {
 
         Task {
             let result = await bridge.queryAIConversation(messages: messagesToSend, apiKey: aiApiKey, provider: aiProvider)
+            guard !aiCancelled else {
+                isAIThinking = false
+                if aiConversation.last?.role == "user" {
+                    aiConversation.removeLast()
+                }
+                return
+            }
             isAIThinking = false
             if let response = result.response {
                 aiExplanation = response
@@ -376,6 +388,7 @@ final class VisualizationViewModel: ObservableObject {
         aiExplanation = nil
         aiError = nil
         isAIThinking = false
+        aiCancelled = false
         aiUnavailable = false
         aiNeedsKey = false
         aiInvalidKey = false
@@ -397,6 +410,7 @@ final class VisualizationViewModel: ObservableObject {
         aiExplanation = nil
         aiError = nil
         isAIThinking = false
+        aiCancelled = false
         aiUnavailable = false
         aiDownloading = false
         aiNeedsKey = false

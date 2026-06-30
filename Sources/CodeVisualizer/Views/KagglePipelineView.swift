@@ -312,6 +312,7 @@ struct StageCodeDetail: View {
     let onExplainLine: ((String, String) -> Void)?
     let fullCode: String
     @State private var hoveredLineId: Int?
+    @State private var neighborContexts: [Int: String] = [:]
 
     private var stageLineNumbers: Set<Int> {
         Set(stage.codeSnippet?.map { $0.lineNumber } ?? [])
@@ -354,11 +355,10 @@ struct StageCodeDetail: View {
 
             ScrollViewReader { proxy in
                 List(allLines, id: \.number) { line in
-                    let neighborCtx = neighborContext(for: line.number)
                     FullCodeLineRow(
                         lineNumber: line.number,
                         code: line.code,
-                        neighborContext: neighborCtx,
+                        neighborContext: neighborContexts[line.number] ?? "\(line.number): \(line.code)",
                         isStageLine: stageLineNumbers.contains(line.number),
                         isActiveLine: line.number == stage.line,
                         isHovered: hoveredLineId == line.number,
@@ -371,24 +371,32 @@ struct StageCodeDetail: View {
                 }
                 .listStyle(.plain)
                 .onAppear {
+                    buildNeighborContexts()
                     proxy.scrollTo(stage.line, anchor: .center)
                 }
-                .onChange(of: stage.id) {
+                .onChange(of: stage.id) { _, _ in
+                    buildNeighborContexts()
                     proxy.scrollTo(stage.line, anchor: .center)
                 }
             }
         }
     }
 
-    private func neighborContext(for lineNumber: Int) -> String {
-        guard let idx = allLines.firstIndex(where: { $0.number == lineNumber }) else {
-            return "Line \(lineNumber): \(allLines.first(where: { $0.number == lineNumber })?.code ?? "")"
+    private func buildNeighborContexts() {
+        let lines = fullCode.components(separatedBy: "\n")
+        var contexts: [Int: String] = [:]
+        contexts.reserveCapacity(lines.count)
+        for (index, _) in lines.enumerated() {
+            let lineNumber = index + 1
+            let startIdx = max(0, index - 2)
+            let endIdx = min(lines.count, index + 3)
+            let context = lines[startIdx..<endIdx]
+                .enumerated()
+                .map { "\(startIdx + $0.offset + 1): \($0.element)" }
+                .joined(separator: "\n")
+            contexts[lineNumber] = context
         }
-        let startIdx = max(0, idx - 2)
-        let endIdx = min(allLines.count, idx + 3)
-        return allLines[startIdx..<endIdx]
-            .map { "\($0.number): \($0.code)" }
-            .joined(separator: "\n")
+        neighborContexts = contexts
     }
 
     private func stageColor(_ s: String) -> Color {

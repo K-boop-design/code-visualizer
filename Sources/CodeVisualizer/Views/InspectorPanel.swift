@@ -417,6 +417,14 @@ struct InspectorPanel: View {
                             Text("Thinking...")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                            Spacer()
+                            Button("Cancel") {
+                                viewModel.aiCancelled = true
+                                viewModel.isAIThinking = false
+                            }
+                            .buttonStyle(.plain)
+                            .font(.caption)
+                            .foregroundColor(.red)
                         }
                         .padding(.leading, 34)
                     }
@@ -440,7 +448,7 @@ struct InspectorPanel: View {
                         }
                         .buttonStyle(.plain)
                         .foregroundColor(.accentColor)
-                        .disabled(viewModel.isAIThinking || viewModel.aiFollowUpText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .disabled(viewModel.aiFollowUpText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
             }
