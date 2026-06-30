@@ -368,6 +368,21 @@ final class VisualizationViewModel: ObservableObject {
         }
     }
 
+    func clearAI() {
+        aiConversation = []
+        aiFollowUpText = ""
+        aiSystemPrompt = ""
+        aiContext = ""
+        aiExplanation = nil
+        aiError = nil
+        isAIThinking = false
+        aiUnavailable = false
+        aiNeedsKey = false
+        aiInvalidKey = false
+        aiRateLimited = false
+        aiDebugInfo = nil
+    }
+
     func clear() {
         code = ""
         scriptResult = nil

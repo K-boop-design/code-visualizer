@@ -345,7 +345,7 @@ def _query_cerebras(prompt: str, api_key: str, system_prompt: str = "", messages
         msgs.append({"role": "user", "content": prompt})
 
     payload = {
-        "model": "llama3.1-8b",
+        "model": "gpt-oss-120b",
         "messages": msgs,
         "temperature": 0.3,
         "max_tokens": 1024,
@@ -357,6 +357,7 @@ def _query_cerebras(prompt: str, api_key: str, system_prompt: str = "", messages
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}",
+            "User-Agent": "CodeVisualizer/1.0",
         },
     )
 
@@ -373,8 +374,10 @@ def _query_cerebras(prompt: str, api_key: str, system_prompt: str = "", messages
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
         log(f"Cerebras HTTP {e.code}: {body[:300]}")
-        if e.code in (401, 403):
+        if e.code == 401:
             return {"response": None, "error": None, "status": "invalid_key"}
+        if e.code in (403, 402):
+            return {"response": None, "error": f"Access denied ({body[:150]})", "status": "error"}
         if e.code == 429:
             return {"response": None, "error": None, "status": "rate_limited"}
         if "tokens" in body.lower() or "token_limit" in body.lower():

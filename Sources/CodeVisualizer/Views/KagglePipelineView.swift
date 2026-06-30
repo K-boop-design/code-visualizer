@@ -354,9 +354,11 @@ struct StageCodeDetail: View {
 
             ScrollViewReader { proxy in
                 List(allLines, id: \.number) { line in
+                    let neighborCtx = neighborContext(for: line.number)
                     FullCodeLineRow(
                         lineNumber: line.number,
                         code: line.code,
+                        neighborContext: neighborCtx,
                         isStageLine: stageLineNumbers.contains(line.number),
                         isActiveLine: line.number == stage.line,
                         isHovered: hoveredLineId == line.number,
@@ -378,6 +380,17 @@ struct StageCodeDetail: View {
         }
     }
 
+    private func neighborContext(for lineNumber: Int) -> String {
+        guard let idx = allLines.firstIndex(where: { $0.number == lineNumber }) else {
+            return "Line \(lineNumber): \(allLines.first(where: { $0.number == lineNumber })?.code ?? "")"
+        }
+        let startIdx = max(0, idx - 2)
+        let endIdx = min(allLines.count, idx + 3)
+        return allLines[startIdx..<endIdx]
+            .map { "\($0.number): \($0.code)" }
+            .joined(separator: "\n")
+    }
+
     private func stageColor(_ s: String) -> Color {
         switch s {
         case "data_loading": return .blue
@@ -397,6 +410,7 @@ struct StageCodeDetail: View {
 private struct FullCodeLineRow: View {
     let lineNumber: Int
     let code: String
+    let neighborContext: String
     let isStageLine: Bool
     let isActiveLine: Bool
     let isHovered: Bool
@@ -409,8 +423,7 @@ private struct FullCodeLineRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Button(action: {
-                let context = "Line \(lineNumber): \(code)"
-                onExplain("\(lineNumber): \(code)", context)
+                onExplain("\(lineNumber): \(code)", neighborContext)
             }) {
                 Text("\(lineNumber)")
                     .font(.caption2.monospacedDigit())

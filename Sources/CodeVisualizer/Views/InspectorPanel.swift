@@ -383,6 +383,20 @@ struct InspectorPanel: View {
         if !viewModel.aiConversation.isEmpty {
             inspectorSection("AI Chat") {
                 VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Spacer()
+                        Button(action: { viewModel.clearAI() }) {
+                            HStack(spacing: 3) {
+                                Image(systemName: "trash")
+                                    .font(.caption2)
+                                Text("Clear")
+                                    .font(.caption2)
+                            }
+                            .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Clear conversation")
+                    }
                     ForEach(viewModel.aiConversation) { msg in
                         HStack(alignment: .top, spacing: 6) {
                             Text(msg.role == "user" ? "You:" : "AI:")
