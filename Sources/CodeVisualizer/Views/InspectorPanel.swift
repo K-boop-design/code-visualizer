@@ -453,8 +453,8 @@ struct InspectorPanel: View {
                 switch viewModel.aiProvider {
                 case "github": return "GitHub"
                 case "deepseek": return "DeepSeek"
-                case "openai": return "OpenAI"
                 case "groq": return "Groq"
+                case "openrouter": return "OpenRouter"
                 default: return "Gemini"
                 }
             }()

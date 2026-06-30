@@ -272,6 +272,7 @@ struct ContentView: View {
                     Text("OpenAI (ChatGPT)").tag("openai")
                     Text("Groq (free)").tag("groq")
                     Text("Google Gemini").tag("gemini")
+                    Text("OpenRouter (free)").tag("openrouter")
                 }
                 .pickerStyle(.radioGroup)
             }
@@ -283,6 +284,7 @@ struct ContentView: View {
                     case "deepseek": return "DeepSeek API Key"
                     case "openai": return "OpenAI API Key"
                     case "groq": return "Groq API Key"
+                    case "openrouter": return "OpenRouter API Key"
                     default: return "Gemini API Key"
                     }
                 }()
@@ -292,6 +294,7 @@ struct ContentView: View {
                     case "deepseek": return "Get a key at platform.deepseek.com"
                     case "openai": return "Get a key at platform.openai.com"
                     case "groq": return "Get a free key at console.groq.com"
+                    case "openrouter": return "Get a free key at openrouter.ai/keys"
                     default: return "Get a free key at aistudio.google.com"
                     }
                 }()

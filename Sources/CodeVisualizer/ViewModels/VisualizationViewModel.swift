@@ -277,7 +277,6 @@ final class VisualizationViewModel: ObservableObject {
             aiDebugInfo = "provider=\(aiProvider) status=\(result.status ?? "nil") error=\(result.error ?? "nil")"
             if let response = result.response {
                 aiExplanation = response
-                aiConversation.append(AIChatMessage(role: "user", content: prompt))
                 aiConversation.append(AIChatMessage(role: "assistant", content: response))
             } else if let error = result.error {
                 aiError = error

@@ -337,17 +337,22 @@ struct StageCodeDetail: View {
 
             if let snippet = stage.codeSnippet, !snippet.isEmpty {
                 ScrollViewReader { proxy in
-                    List(snippet) { line in
-                        CodeLineRow(
-                            line: line,
-                            stage: stage,
-                            isHovered: hoveredLineId == line.lineNumber,
-                            onShowOutput: onShowOutput,
-                            onExplainLine: onExplainLine,
-                            onHover: { hoveredLineId = $0 ? line.lineNumber : nil }
-                        )
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(snippet) { line in
+                                CodeLineRow(
+                                    line: line,
+                                    stage: stage,
+                                    isHovered: hoveredLineId == line.lineNumber,
+                                    onShowOutput: onShowOutput,
+                                    onExplainLine: onExplainLine,
+                                    onHover: { hoveredLineId = $0 ? line.lineNumber : nil }
+                                )
+                                .id(line.id)
+                            }
+                        }
                     }
-                    .listStyle(.plain)
+                    .textSelection(.enabled)
                     .onAppear {
                         if let target = snippet.first(where: { $0.lineNumber == stage.line }) {
                             proxy.scrollTo(target.id, anchor: .center)
@@ -405,24 +410,22 @@ private struct CodeLineRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .top, spacing: 10) {
-                Button(action: {
-                    guard let onExplainLine, let snippet = stage.codeSnippet else { return }
-                    let idx = snippet.firstIndex(where: { $0.id == line.id }) ?? 0
-                    let startIdx = max(0, idx - 2)
-                    let endIdx = min(snippet.count, idx + 3)
-                    let neighborLines = snippet[startIdx..<endIdx]
-                    let context = neighborLines.map { "\($0.lineNumber): \($0.code)" }.joined(separator: "\n")
-                    let specificLine = "\(line.lineNumber): \(line.code)"
-                    onExplainLine(specificLine, context)
-                }) {
-                    Text("\(line.lineNumber)")
-                        .font(.caption2.monospacedDigit())
-                        .foregroundColor(.accentColor)
-                        .frame(width: 30, alignment: .trailing)
-                        .padding(.top, 2)
-                }
-                .buttonStyle(.plain)
-                .help("Explain this line with AI")
+                Text("\(line.lineNumber)")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundColor(.accentColor)
+                    .frame(width: 30, alignment: .trailing)
+                    .padding(.top, 2)
+                    .onTapGesture {
+                        guard let onExplainLine, let snippet = stage.codeSnippet else { return }
+                        let idx = snippet.firstIndex(where: { $0.id == line.id }) ?? 0
+                        let startIdx = max(0, idx - 2)
+                        let endIdx = min(snippet.count, idx + 3)
+                        let neighborLines = snippet[startIdx..<endIdx]
+                        let context = neighborLines.map { "\($0.lineNumber): \($0.code)" }.joined(separator: "\n")
+                        let specificLine = "\(line.lineNumber): \(line.code)"
+                        onExplainLine(specificLine, context)
+                    }
+                    .help("Explain this line with AI")
                 Text(line.code)
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.primary)
